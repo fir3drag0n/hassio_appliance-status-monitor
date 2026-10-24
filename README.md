@@ -1,3 +1,11 @@
+> **Fork note (fir3drag0n) – 3.0.0-fir3drag0n.1:** based on the unreleased upstream branch `release/v3.0.0-dev` (last change 2023-02-06), with these fixes:
+> - `timer.start` now passes the configured duration (`delayed_job_ongoing_duration`, `delayed_job_completion_duration`, `job_completed_persistence_duration`). Before, the timer helper's own duration silently capped the delay (e.g. a 45 min completion delay ended after the helper's 15 min).
+> - Timer duration parsing used the hours field as seconds (`duration_split[0]` instead of `[2]`).
+> - The power trigger uses `to: null`, so attribute-only updates no longer start a run.
+> - `delayed_job_completion_duration` slider goes up to 7200 s (dishwashers with long passive drying).
+> - Current syntax (`triggers`/`conditions`/`actions`, `trigger:`, `action:`, no `data_template`).
+> - `source_url` points to this fork.
+
 # 🔌 Detect the state of your appliances based on their power consumption - V3.0.0 ✨
 
 ### [Go to the official discussion on the Home Assistant Forum](https://community.home-assistant.io/t/detect-and-monitor-the-state-of-an-appliance-based-on-its-power-consumption-v2-1-1-updated/421670)

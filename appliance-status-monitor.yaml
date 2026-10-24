@@ -1,7 +1,7 @@
 blueprint:
   name: ASM - Monitor the state of an appliance - by leofabri
   description: >-
-    `- Version: 3.0.0 -`
+    `- Version: 3.0.0-fir3drag0n.1 -`
 
 
     ASM ('Appliance State Monitor') is an automation that can detect and monitor the state of your appliances through smart plugs.
@@ -142,7 +142,7 @@ blueprint:
       selector:
         number:
           min: 0.0
-          max: 900.0
+          max: 7200.0
           step: 1.0
           unit_of_measurement: seconds
           mode: slider
@@ -400,7 +400,7 @@ blueprint:
       selector:
         action:
 
-  source_url: https://github.com/leofabri/hassio_appliance-status-monitor/blob/main/appliance-status-monitor.yaml
+  source_url: https://github.com/fir3drag0n/hassio_appliance-status-monitor/blob/main/appliance-status-monitor.yaml
 
 # FLAG: Variables
 variables:
@@ -433,48 +433,49 @@ variables:
   LOG_LOGGER: homeassistant.components.asm_blueprint
 
 # FLAG: Triggers
-trigger:
-  - platform: state
+triggers:
+  - trigger: state
     entity_id: !input "appliance_power_sensor"
+    to: null
     id: power_event
-  - platform: state
+  - trigger: state
     entity_id: !input "appliance_socket"
     id: socket_state_change_event
 
-  - platform: state
+  - trigger: state
     entity_id: !input "appliance_state_machine"
     from: detached_overload
     to: paused
     id: paused_after_overload_event
-  - platform: state
+  - trigger: state
     entity_id: !input "appliance_state_machine"
     from: unplugged
     to: paused
     id: paused_after_unplugged_event
-  - platform: state
+  - trigger: state
     entity_id: !input "appliance_state_machine"
     from: detached_overload
     to: job_ongoing
     id: resuming_after_paused_overload_event
 
-  - platform: state
+  - trigger: state
     entity_id: !input "automation_self_trigger"
     from: "off"
     to: "on"
     id: automation_self_triggered
 
   # EVENTS from timers
-  - platform: event
+  - trigger: event
     event_type: timer.finished
     event_data:
       entity_id: !input "delayed_job_ongoing_timer"
     id: job_started_timer_finished
-  - platform: event
+  - trigger: event
     event_type: timer.finished
     event_data:
       entity_id: !input "delayed_job_completion_timer"
     id: job_completed_timer_finished
-  - platform: event
+  - trigger: event
     event_type: timer.finished
     event_data:
       entity_id: !input "job_completed_persistence_timer"
@@ -482,16 +483,16 @@ trigger:
   # ----
 
   # EVENTS from Home Assistant
-  - platform: homeassistant
+  - trigger: homeassistant
     event: start
     id: home_assistant_started_event
-  - platform: event
+  - trigger: event
     event_type:
       - automation_reloaded
     id: automation_reloaded_event
   # ----
 
-condition:
+conditions:
   # Accepted triggers:
   - condition: or
     conditions:
@@ -519,8 +520,8 @@ condition:
         id: automation_reloaded_event
 
 # FLAG: Logic
-action:
-  - service: input_boolean.turn_off
+actions:
+  - action: input_boolean.turn_off
     data: {}
     target:
       entity_id: !input "automation_self_trigger"
@@ -544,21 +545,21 @@ action:
               - condition: state
                 entity_id: !input "appliance_state_machine"
                 state: detached_overload
-          - service: input_select.select_option
+          - action: input_select.select_option
             data:
               option: detached_overload # FLAG: detached_overload STATE TRANSITION
             target:
               entity_id: !input "appliance_state_machine"
           # ***** LOG SECTION *****
-          - service: system_log.write
-            data_template:
+          - action: system_log.write
+            data:
               level: "{{ LOG_LEVEL }}"
               logger: "{{ LOG_LOGGER }}"
               message: "{{ LOG_STATE_CHANGE }} - Entered the detached_overload state."
           # ***********************
           # ***** LOG SECTION *****
-          - service: system_log.write
-            data_template:
+          - action: system_log.write
+            data:
               level: "{{ LOG_LEVEL }}"
               logger: "{{ LOG_LOGGER }}"
               message: "{{ LOG_CUSTOM_ACTIONS }} - executing actions_unplugged_overload."
@@ -595,14 +596,14 @@ action:
                 entity_id: !input "appliance_state_machine"
                 state: paused
         sequence:
-          - service: input_select.select_option
+          - action: input_select.select_option
             data:
               option: paused # FLAG: paused STATE TRANSITION
             target:
               entity_id: !input "appliance_state_machine"
           # ***** LOG SECTION *****
-          - service: system_log.write
-            data_template:
+          - action: system_log.write
+            data:
               level: "{{ LOG_LEVEL }}"
               logger: "{{ LOG_LOGGER }}"
               message: "{{ LOG_STATE_CHANGE }} - Entered the paused state."
@@ -633,14 +634,14 @@ action:
               - condition: state
                 entity_id: !input "appliance_state_machine"
                 state: unplugged
-          - service: input_select.select_option
+          - action: input_select.select_option
             data:
               option: unplugged # FLAG: unplugged STATE TRANSITION
             target:
               entity_id: !input "appliance_state_machine"
           # ***** LOG SECTION *****
-          - service: system_log.write
-            data_template:
+          - action: system_log.write
+            data:
               level: "{{ LOG_LEVEL }}"
               logger: "{{ LOG_LOGGER }}"
               message: "{{ LOG_STATE_CHANGE }} - Entered the unplugged state."
@@ -650,13 +651,13 @@ action:
                   - condition: template
                     value_template: "{{ states(delayed_job_completion_timer) == 'active' }}"
                 sequence:
-                  - service: timer.cancel
+                  - action: timer.cancel
                     data: {}
                     target:
                       entity_id: !input "delayed_job_completion_timer"
                   # ***** LOG SECTION *****
-                  - service: system_log.write
-                    data_template:
+                  - action: system_log.write
+                    data:
                       level: "{{ LOG_LEVEL }}"
                       logger: "{{ LOG_LOGGER }}"
                       message: "{{ LOG_TIMER }} - delayed_job_completion_timer canceled and stopped."
@@ -666,8 +667,8 @@ action:
             id: paused_after_overload_event
         sequence:
           # ***** LOG SECTION *****
-          - service: system_log.write
-            data_template:
+          - action: system_log.write
+            data:
               level: "{{ LOG_LEVEL }}"
               logger: "{{ LOG_LOGGER }}"
               message: "{{ LOG_CUSTOM_ACTIONS }} - executing actions_paused_after_overload."
@@ -679,8 +680,8 @@ action:
             id: paused_after_unplugged_event
         sequence:
           # ***** LOG SECTION *****
-          - service: system_log.write
-            data_template:
+          - action: system_log.write
+            data:
               level: "{{ LOG_LEVEL }}"
               logger: "{{ LOG_LOGGER }}"
               message: "{{ LOG_CUSTOM_ACTIONS }} - executing actions_paused_after_unplugged."
@@ -692,8 +693,8 @@ action:
             id: resuming_after_paused_overload_event
         sequence:
           # ***** LOG SECTION *****
-          - service: system_log.write
-            data_template:
+          - action: system_log.write
+            data:
               level: "{{ LOG_LEVEL }}"
               logger: "{{ LOG_LOGGER }}"
               message: "{{ LOG_CUSTOM_ACTIONS }} - executing actions_resuming_after_overload."
@@ -720,13 +721,13 @@ action:
                       - condition: template
                         value_template: "{{ states(job_completed_persistence_timer) == 'active' }}"
                     sequence:
-                      - service: timer.cancel
+                      - action: timer.cancel
                         data: {}
                         target:
                           entity_id: !input "job_completed_persistence_timer"
                       # ***** LOG SECTION *****
-                      - service: system_log.write
-                        data_template:
+                      - action: system_log.write
+                        data:
                           level: "{{ LOG_LEVEL }}"
                           logger: "{{ LOG_LOGGER }}"
                           message: "{{ LOG_TIMER }} - The starting power threshold was surpassed again => job_completed_persistence_timer canceled and stopped"
@@ -739,13 +740,13 @@ action:
                       - condition: template
                         value_template: "{{ states(delayed_job_completion_timer) == 'active' }}"
                     sequence:
-                      - service: timer.cancel
+                      - action: timer.cancel
                         data: {}
                         target:
                           entity_id: !input "delayed_job_completion_timer"
                       # ***** LOG SECTION *****
-                      - service: system_log.write
-                        data_template:
+                      - action: system_log.write
+                        data:
                           level: "{{ LOG_LEVEL }}"
                           logger: "{{ LOG_LOGGER }}"
                           message: "{{ LOG_TIMER }} - The starting power threshold was surpassed again => delayed_job_completion_timer canceled and stopped"
@@ -769,20 +770,21 @@ action:
                             id: job_started_timer_finished
                     sequence:
                       # ***** LOG SECTION *****
-                      - service: system_log.write
-                        data_template:
+                      - action: system_log.write
+                        data:
                           level: "{{ LOG_LEVEL }}"
                           logger: "{{ LOG_LOGGER }}"
                           message: "{{ LOG_POWER_THRESHOLD }} - The starting power threshold was reached"
                       # ***********************
                       # Start the timer, start counting backwards
-                      - service: timer.start
-                        data: {}
+                      - action: timer.start
+                        data:
+                          duration: "{{ [delayed_job_ongoing_duration | int, 1] | max | timestamp_custom('%H:%M:%S', false) }}"
                         target:
                           entity_id: !input "delayed_job_ongoing_timer"
                       # ***** LOG SECTION *****
-                      - service: system_log.write
-                        data_template:
+                      - action: system_log.write
+                        data:
                           level: "{{ LOG_LEVEL }}"
                           logger: "{{ LOG_LOGGER }}"
                           message: "{{ LOG_TIMER }} - delayed_job_ongoing_timer start invoked. Now it's {{ states(delayed_job_ongoing_timer) }}"
@@ -803,7 +805,7 @@ action:
                                     {% set t_remaining_sec = 0 if t_expiring_date == None else (as_datetime(t_expiring_date) - now()).total_seconds() | int %}
                                     {% set t_total_duration = state_attr(delayed_job_ongoing_timer, 'duration') %}
                                     {% set duration_split = t_total_duration.split(':') %}
-                                    {% set t_total_duration_sec  = (duration_split[0] | int * 3600) + (duration_split[1] | int * 60) + (duration_split[0] | int) %}
+                                    {% set t_total_duration_sec  = (duration_split[0] | int * 3600) + (duration_split[1] | int * 60) + (duration_split[2] | int) %}
                                     {% set t_elapsed_sec = (t_total_duration_sec - t_remaining_sec) | int %}
                                     {{ t_elapsed_sec < (delayed_job_ongoing_duration) | int }}
                                   {% else %}
@@ -811,8 +813,8 @@ action:
                                   {% endif %}
                             sequence:
                               # ***** LOG SECTION *****
-                              - service: system_log.write
-                                data_template:
+                              - action: system_log.write
+                                data:
                                   level: "{{ LOG_LEVEL }}"
                                   logger: "{{ LOG_LOGGER }}"
                                   message: "{{ LOG_WAIT }} - Waiting {{ delayed_job_ongoing_duration }} seconds, then I will decide if job_ongoing state should be entered."
@@ -825,7 +827,7 @@ action:
                                       {% set t_remaining_sec = 0 if t_expiring_date == None else (as_datetime(t_expiring_date) - now()).total_seconds() | int %}
                                       {% set t_total_duration = state_attr(delayed_job_ongoing_timer, 'duration') %}
                                       {% set duration_split = t_total_duration.split(':') %}
-                                      {% set t_total_duration_sec  = (duration_split[0] | int * 3600) + (duration_split[1] | int * 60) + (duration_split[0] | int) %}
+                                      {% set t_total_duration_sec  = (duration_split[0] | int * 3600) + (duration_split[1] | int * 60) + (duration_split[2] | int) %}
                                       {% set t_elapsed_sec = (t_total_duration_sec - t_remaining_sec) | int %}
                                       {% set t_remaining = ((delayed_job_ongoing_duration) | int) - t_elapsed_sec %}
                                       
@@ -834,7 +836,7 @@ action:
                                       {{ 1 + (delayed_job_ongoing_duration) | int }}
                                     {% endif %}
                               # if the delay is elapsed, self trig the atomation
-                              - service: input_boolean.turn_on
+                              - action: input_boolean.turn_on
                                 data: {}
                                 target:
                                   entity_id: !input "automation_self_trigger"
@@ -846,14 +848,14 @@ action:
                   - condition: state
                     entity_id: !input "appliance_state_machine"
                     state: job_ongoing
-              - service: input_select.select_option
+              - action: input_select.select_option
                 data:
                   option: job_ongoing # FLAG: job_ongoing STATE TRANSITION
                 target:
                   entity_id: !input "appliance_state_machine"
               # ***** LOG SECTION *****
-              - service: system_log.write
-                data_template:
+              - action: system_log.write
+                data:
                   level: "{{ LOG_LEVEL }}"
                   logger: "{{ LOG_LOGGER }}"
                   message: "{{ LOG_STATE_CHANGE }} - Entered the job_ongoing state."
@@ -863,13 +865,13 @@ action:
                       - condition: template
                         value_template: "{{ states(delayed_job_ongoing_timer) == 'active' }}"
                     sequence:
-                      - service: timer.cancel
+                      - action: timer.cancel
                         data: {}
                         target:
                           entity_id: !input "delayed_job_ongoing_timer"
                       # ***** LOG SECTION *****
-                      - service: system_log.write
-                        data_template:
+                      - action: system_log.write
+                        data:
                           level: "{{ LOG_LEVEL }}"
                           logger: "{{ LOG_LOGGER }}"
                           message: "{{ LOG_TIMER }} - delayed_job_ongoing_timer canceled and stopped."
@@ -880,20 +882,20 @@ action:
                         entity_id: !input "appliance_job_cycle"
                         state: "off"
                     sequence:
-                      - service: input_boolean.turn_on
+                      - action: input_boolean.turn_on
                         data: {}
                         target:
                           entity_id: !input "appliance_job_cycle"
                       # ***** LOG SECTION *****
-                      - service: system_log.write
-                        data_template:
+                      - action: system_log.write
+                        data:
                           level: "{{ LOG_LEVEL }}"
                           logger: "{{ LOG_LOGGER }}"
                           message: "{{ LOG_CYCLE_START }} - A new Job Cycle started"
                       # ***********************
                       # ***** LOG SECTION *****
-                      - service: system_log.write
-                        data_template:
+                      - action: system_log.write
+                        data:
                           level: "{{ LOG_LEVEL }}"
                           logger: "{{ LOG_LOGGER }}"
                           message: "{{ LOG_CUSTOM_ACTIONS }} - executing actions_new_job_cycle_begins."
@@ -902,8 +904,8 @@ action:
                         default: !input "actions_new_job_cycle_begins"
                 default:
                   # ***** LOG SECTION *****
-                  - service: system_log.write
-                    data_template:
+                  - action: system_log.write
+                    data:
                       level: "{{ LOG_LEVEL }}"
                       logger: "{{ LOG_LOGGER }}"
                       message: "{{ LOG_CUSTOM_ACTIONS }} - executing actions_job_cycle_resumes."
@@ -945,8 +947,8 @@ action:
                         value_template: "{{ states(appliance_socket) == 'off' }}"
             sequence:
               # ***** LOG SECTION *****
-              - service: system_log.write
-                data_template:
+              - action: system_log.write
+                data:
                   level: "{{ LOG_LEVEL }}"
                   logger: "{{ LOG_LOGGER }}"
                   message: "{{ LOG_POWER_THRESHOLD }} - The finishing power threshold was reached"
@@ -989,13 +991,14 @@ action:
                             id: job_completed_timer_finished
                     sequence:
                       # Start the timer, start counting backwards
-                      - service: timer.start
-                        data: {}
+                      - action: timer.start
+                        data:
+                          duration: "{{ [delayed_job_completion_duration | int, 1] | max | timestamp_custom('%H:%M:%S', false) }}"
                         target:
                           entity_id: !input "delayed_job_completion_timer"
                       # ***** LOG SECTION *****
-                      - service: system_log.write
-                        data_template:
+                      - action: system_log.write
+                        data:
                           level: "{{ LOG_LEVEL }}"
                           logger: "{{ LOG_LOGGER }}"
                           message: "{{ LOG_TIMER }} - delayed_job_completion_timer start invoked. Now it's {{ states(delayed_job_completion_timer) }}"
@@ -1023,7 +1026,7 @@ action:
                                     {% set t_remaining_sec = 0 if t_expiring_date == None else (as_datetime(t_expiring_date) - now()).total_seconds() | int %}
                                     {% set t_total_duration = state_attr(delayed_job_completion_timer, 'duration') %}
                                     {% set duration_split = t_total_duration.split(':') %}
-                                    {% set t_total_duration_sec  = (duration_split[0] | int * 3600) + (duration_split[1] | int * 60) + (duration_split[0] | int) %}
+                                    {% set t_total_duration_sec  = (duration_split[0] | int * 3600) + (duration_split[1] | int * 60) + (duration_split[2] | int) %}
                                     {% set t_elapsed_sec = (t_total_duration_sec - t_remaining_sec) | int %}
                                     {{ t_elapsed_sec < (delayed_job_completion_duration) | int }}
                                   {% else %}
@@ -1031,8 +1034,8 @@ action:
                                   {% endif %}
                             sequence:
                               # ***** LOG SECTION *****
-                              - service: system_log.write
-                                data_template:
+                              - action: system_log.write
+                                data:
                                   level: "{{ LOG_LEVEL }}"
                                   logger: "{{ LOG_LOGGER }}"
                                   message: "{{ LOG_WAIT }} - Waiting {{ delayed_job_completion_duration }} seconds, then I will decide if job_completed state should be entered."
@@ -1044,7 +1047,7 @@ action:
                                       {% set t_remaining_sec = 0 if t_expiring_date == None else (as_datetime(t_expiring_date) - now()).total_seconds() | int %}
                                       {% set t_total_duration = state_attr(delayed_job_completion_timer, 'duration') %}
                                       {% set duration_split = t_total_duration.split(':') %}
-                                      {% set t_total_duration_sec  = (duration_split[0] | int * 3600) + (duration_split[1] | int * 60) + (duration_split[0] | int) %}
+                                      {% set t_total_duration_sec  = (duration_split[0] | int * 3600) + (duration_split[1] | int * 60) + (duration_split[2] | int) %}
                                       {% set t_elapsed_sec = (t_total_duration_sec - t_remaining_sec) | int %}
                                       {% set t_remaining = ((delayed_job_completion_duration) | int) - t_elapsed_sec %}
                                       
@@ -1053,32 +1056,32 @@ action:
                                       {{ 1 + (delayed_job_completion_duration) | int }}
                                     {% endif %}
                               # if the delay is elapsed, self trig the atomation
-                              - service: input_boolean.turn_on
+                              - action: input_boolean.turn_on
                                 data: {}
                                 target:
                                   entity_id: !input "automation_self_trigger"
                               # make sure that the execution doesn't continue. So that the job_completed state is not reached.
                               - stop: ""
                 default: [] # Do nothing. End
-              - service: input_boolean.turn_off
+              - action: input_boolean.turn_off
                 data: {}
                 target:
                   entity_id: !input "appliance_job_cycle"
-              - service: input_select.select_option
+              - action: input_select.select_option
                 data:
                   option: job_completed # FLAG: job_completed STATE TRANSITION
                 target:
                   entity_id: !input "appliance_state_machine"
               # ***** LOG SECTION *****
-              - service: system_log.write
-                data_template:
+              - action: system_log.write
+                data:
                   level: "{{ LOG_LEVEL }}"
                   logger: "{{ LOG_LOGGER }}"
                   message: "{{ LOG_CYCLE_END }} - The Job Cycle is over"
               # ***********************
               # ***** LOG SECTION *****
-              - service: system_log.write
-                data_template:
+              - action: system_log.write
+                data:
                   level: "{{ LOG_LEVEL }}"
                   logger: "{{ LOG_LOGGER }}"
                   message: "{{ LOG_STATE_CHANGE }} - Entered the job_completed state."
@@ -1088,20 +1091,20 @@ action:
                       - condition: template
                         value_template: "{{ states(delayed_job_completion_timer) == 'active' }}"
                     sequence:
-                      - service: timer.cancel
+                      - action: timer.cancel
                         data: {}
                         target:
                           entity_id: !input "delayed_job_completion_timer"
                       # ***** LOG SECTION *****
-                      - service: system_log.write
-                        data_template:
+                      - action: system_log.write
+                        data:
                           level: "{{ LOG_LEVEL }}"
                           logger: "{{ LOG_LOGGER }}"
                           message: "{{ LOG_TIMER }} - delayed_job_completion_timer canceled and stopped."
                       # ***********************
               # ***** LOG SECTION *****
-              - service: system_log.write
-                data_template:
+              - action: system_log.write
+                data:
                   level: "{{ LOG_LEVEL }}"
                   logger: "{{ LOG_LOGGER }}"
                   message: "{{ LOG_CUSTOM_ACTIONS }} - executing actions_job_cycle_ends."
@@ -1123,7 +1126,7 @@ action:
                       # - delay:
                       #     minutes: 1
                       # Self trigger once more to move to the idle state
-                      - service: input_boolean.turn_on
+                      - action: input_boolean.turn_on
                         data: {}
                         target:
                           entity_id: !input "automation_self_trigger"
@@ -1161,13 +1164,14 @@ action:
                             state: job_completed
                         sequence:
                           # Start the timer, strart counting backwards
-                          - service: timer.start
-                            data: {}
+                          - action: timer.start
+                            data:
+                              duration: "{{ [job_completed_persistence_duration | int, 1] | max | timestamp_custom('%H:%M:%S', false) }}"
                             target:
                               entity_id: !input "job_completed_persistence_timer"
                           # ***** LOG SECTION *****
-                          - service: system_log.write
-                            data_template:
+                          - action: system_log.write
+                            data:
                               level: "{{ LOG_LEVEL }}"
                               logger: "{{ LOG_LOGGER }}"
                               message: "{{ LOG_TIMER }} - job_completed_persistence_timer start invoked. Now it's {{ states(job_completed_persistence_timer) }}"
@@ -1188,7 +1192,7 @@ action:
                                         {% set t_remaining_sec = 0 if t_expiring_date == None else (as_datetime(t_expiring_date) - now()).total_seconds() | int %}
                                         {% set t_total_duration = state_attr(job_completed_persistence_timer, 'duration') %}
                                         {% set duration_split = t_total_duration.split(':') %}
-                                        {% set t_total_duration_sec  = (duration_split[0] | int * 3600) + (duration_split[1] | int * 60) + (duration_split[0] | int) %}
+                                        {% set t_total_duration_sec  = (duration_split[0] | int * 3600) + (duration_split[1] | int * 60) + (duration_split[2] | int) %}
                                         {% set t_elapsed_sec = (t_total_duration_sec - t_remaining_sec) | int %}
                                         {{ t_elapsed_sec < (job_completed_persistence_duration) | int }}
                                       {% else %}
@@ -1196,8 +1200,8 @@ action:
                                       {% endif %}
                                 sequence:
                                   # ***** LOG SECTION *****
-                                  - service: system_log.write
-                                    data_template:
+                                  - action: system_log.write
+                                    data:
                                       level: "{{ LOG_LEVEL }}"
                                       logger: "{{ LOG_LOGGER }}"
                                       message: "{{ LOG_WAIT }} - Waiting {{ job_completed_persistence_duration }} seconds, then I will decide if idle state should be entered."
@@ -1209,7 +1213,7 @@ action:
                                           {% set t_remaining_sec = 0 if t_expiring_date == None else (as_datetime(t_expiring_date) - now()).total_seconds() | int %}
                                           {% set t_total_duration = state_attr(job_completed_persistence_timer, 'duration') %}
                                           {% set duration_split = t_total_duration.split(':') %}
-                                          {% set t_total_duration_sec  = (duration_split[0] | int * 3600) + (duration_split[1] | int * 60) + (duration_split[0] | int) %}
+                                          {% set t_total_duration_sec  = (duration_split[0] | int * 3600) + (duration_split[1] | int * 60) + (duration_split[2] | int) %}
                                           {% set t_elapsed_sec = (t_total_duration_sec - t_remaining_sec) | int %}
                                           {% set t_remaining = ((job_completed_persistence_duration) | int) - t_elapsed_sec %}
                                           
@@ -1218,7 +1222,7 @@ action:
                                           {{ 1 + (job_completed_persistence_duration) | int }}
                                         {% endif %}
                                   # if the delay is elapsed, self trig the atomation
-                                  - service: input_boolean.turn_on
+                                  - action: input_boolean.turn_on
                                     data: {}
                                     target:
                                       entity_id: !input "automation_self_trigger"
@@ -1226,14 +1230,14 @@ action:
                                   - stop: ""
                     default: [] # Do nothing. End
                   # Go to idle
-                  - service: input_select.select_option
+                  - action: input_select.select_option
                     data:
                       option: idle # FLAG: idle STATE TRANSITION
                     target:
                       entity_id: !input "appliance_state_machine"
                   # ***** LOG SECTION *****
-                  - service: system_log.write
-                    data_template:
+                  - action: system_log.write
+                    data:
                       level: "{{ LOG_LEVEL }}"
                       logger: "{{ LOG_LOGGER }}"
                       message: "{{ LOG_STATE_CHANGE }} - Entered the idle state."
@@ -1243,13 +1247,13 @@ action:
                           - condition: template
                             value_template: "{{ states(job_completed_persistence_timer) == 'active' }}"
                         sequence:
-                          - service: timer.cancel
+                          - action: timer.cancel
                             data: {}
                             target:
                               entity_id: !input "job_completed_persistence_timer"
                           # ***** LOG SECTION *****
-                          - service: system_log.write
-                            data_template:
+                          - action: system_log.write
+                            data:
                               level: "{{ LOG_LEVEL }}"
                               logger: "{{ LOG_LOGGER }}"
                               message: "{{ LOG_TIMER }} - job_completed_persistence_timer canceled and stopped."
@@ -1260,13 +1264,13 @@ action:
                       - condition: template
                         value_template: "{{ states(delayed_job_ongoing_timer) == 'active' }}"
                     sequence:
-                      - service: timer.cancel
+                      - action: timer.cancel
                         data: {}
                         target:
                           entity_id: !input "delayed_job_ongoing_timer"
                       # ***** LOG SECTION *****
-                      - service: system_log.write
-                        data_template:
+                      - action: system_log.write
+                        data:
                           level: "{{ LOG_LEVEL }}"
                           logger: "{{ LOG_LOGGER }}"
                           message: "{{ LOG_TIMER }} - delayed_job_ongoing_timer canceled and stopped."

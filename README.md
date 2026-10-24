@@ -1,3 +1,5 @@
+> **Fork note (fir3drag0n):** identical to upstream v2.1.1 except that the always-false `condition: template "{{0}}"` used to end a run after the delayed-job-completion self-trigger is replaced by an explicit `stop:` action (same behaviour, but no longer flagged by Spook as a "template that can never be true"). `source_url` points to this fork.
+
 # 🔌 Detect and monitor the state of an appliance based on its power consumption - V2.1.1 ✨
 ### Automation Blueprint for Home Assistant
 

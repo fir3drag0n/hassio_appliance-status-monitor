@@ -1,7 +1,7 @@
 blueprint:
   name: Monitor the state of an appliance - by leofabri
   description: >-
-    `- Version: 2.1.1 -`
+    `- Version: 2.1.1-fir3drag0n.1 -`
 
 
     This automation can detect and monitor the state of your appliances by observing their power consumption.
@@ -294,7 +294,7 @@ blueprint:
       default: []
       selector:
         action:
-  source_url: https://github.com/leofabri/hassio_appliance-status-monitor/blob/main/appliance-status-monitor.yaml
+  source_url: https://github.com/fir3drag0n/hassio_appliance-status-monitor/blob/main/appliance-status-monitor.yaml
 variables:
   appliance_socket: !input "appliance_socket"
   appliance_suspended_sensor: !input "appliance_suspended_sensor"
@@ -589,8 +589,7 @@ action:
                                 data: {}
                                 target:
                                   entity_id: !input "automation_self_trigger"
-                              - condition: template
-                                value_template: "{{0}}"
+                              - stop: "Waiting for the self-trigger (delayed job completion)"
                 default: []
               - service: input_boolean.turn_off
                 data: {}
